@@ -27,5 +27,5 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Locks (keep requirements.txt, gitignore the lock)
-requirements.lock
+# Virtual environment lock — committed for reproducibility
+# requirements.lock
