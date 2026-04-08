@@ -29,3 +29,4 @@ Thumbs.db
 
 # Virtual environment lock — committed for reproducibility
 # requirements.lock
+.claude/
