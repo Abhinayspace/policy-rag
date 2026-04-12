@@ -1,0 +1,69 @@
+# Golden Q&A Test Set — Policy RAG
+# Format: Q: <question> | A: <expected answer> | SRC: <source policy file>
+# These are ground-truth pairs used to evaluate retrieval quality in Phase 3
+# and answer quality in Phase 4. Target: 12/15 passing before moving to Phase 5.
+
+# --- Leave Policy ---
+Q: How many weeks of paid maternity leave are employees entitled to?
+A: 26 weeks for the first or second child, as per the Maternity Benefit Act 2017.
+SRC: Leave_Policy_-_2026_1775712658732.pdf
+
+Q: How many days of bereavement leave does an employee get?
+A: 3 days of paid bereavement leave for the death of an immediate family member.
+SRC: Leave_Policy_-_2026_1775712658732.pdf
+
+Q: What is the leave year period defined in the Leave Policy?
+A: The year commences on the 1st of January and ends on the 31st of December (calendar year).
+SRC: Leave_Policy_-_2026_1775712658732.pdf
+
+Q: Are Saturdays and Sundays counted as part of leave?
+A: No. Saturdays, Sundays, or holidays that fall at the beginning, in between, or at the end of leave are not counted, except in the case of maternity leave.
+SRC: Leave_Policy_-_2026_1775712658732.pdf
+
+# --- Travel Policy ---
+Q: How many working days in advance must domestic travel be requested?
+A: At least 7 working days in advance for domestic travel.
+SRC: Travel_Policy_1775712809540.pdf
+
+Q: What class of air travel is permitted for international travel?
+A: Economy class for employees at all levels.
+SRC: Travel_Policy_1775712809540.pdf
+
+Q: Are self-bookings reimbursable under the Travel Policy?
+A: No. Self-bookings are not reimbursable unless pre-approved.
+SRC: Travel_Policy_1775712809540.pdf
+
+Q: What is the accommodation rule for employees up to Manager Level (M4)?
+A: Employees up to Manager Level (M4) must opt for double occupancy. Single occupancy requires HOD approval in advance.
+SRC: Travel_Policy_1775712809540.pdf
+
+# --- Employee Referral Policy ---
+Q: Who is NOT eligible to participate in the employee referral program?
+A: The Talent Acquisition (TA) team is excluded from participating in the referral program.
+SRC: Employee_Referral_Policy__1775712527882.pdf
+
+Q: When is the referral bonus paid if the referring employee is leaving the organization?
+A: The referral bonus is paid in the Full and Final (F&F) settlement.
+SRC: Employee_Referral_Policy__1775712527882.pdf
+
+Q: Can an employee refer a candidate who has already been contacted by the TA team?
+A: No. If the candidate has already been contacted by the TA team before being referred, it will not be considered a referral.
+SRC: Employee_Referral_Policy__1775712527882.pdf
+
+# --- Grievance Policy ---
+Q: Does the Grievance Policy cover sexual harassment complaints?
+A: No. Sexual harassment complaints are excluded and must be addressed under the POSH Policy.
+SRC: Grievance_Policy_-_2025_1775712576584.pdf
+
+Q: What are the core principles governing grievance redressal?
+A: Fairness, objectivity, impartiality, confidentiality, timely resolution, natural justice, and non-retaliation.
+SRC: Grievance_Policy_-_2025_1775712576584.pdf
+
+# --- Performance Bonus ---
+Q: How is the performance bonus calculated for a new hire who joins mid-year?
+A: The bonus is prorated based on the number of months worked during the performance period.
+SRC: Performance_Bonus_Guidelines_-_2026_1775712704602.pdf
+
+Q: What factors determine an employee's performance bonus?
+A: Individual performance, team performance, company performance, and the Organizational Performance Factor linked to BUSINESSNEXT's performance against key business metrics.
+SRC: Performance_Bonus_Guidelines_-_2026_1775712704602.pdf
