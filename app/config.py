@@ -24,7 +24,7 @@ def get_llm():
 
     if mode == "ollama":
         from llama_index.llms.ollama import Ollama
-        return Ollama(model="llama3.2", request_timeout=120.0)
+        return Ollama(model="phi3:mini", request_timeout=300.0, context_window=4096)
 
     if mode == "claude":
         from llama_index.llms.anthropic import Anthropic
