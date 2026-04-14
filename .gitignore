@@ -4,6 +4,11 @@ vector_store/
 # Secrets
 .env
 
+# Policy documents — confidential, never commit to version control
+pdfs/*.pdf
+pdfs/*.xlsx
+pdfs/*.docx
+
 # Python
 __pycache__/
 *.pyc
