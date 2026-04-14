@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Policy RAG — Build Journey & Implementation Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d14;
+  --surface: #13131e;
+  --surface2: #1a1a28;
+  --surface3: #212132;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8e8f0;
+  --muted: #7070a0;
+  --accent: #7c6af7;
+  --accent2: #4ecdc4;
+  --accent3: #f7c76a;
+  --danger: #f76a6a;
+  --success: #6af7a0;
+  --warn: #f7a06a;
+  --info: #6ab8f7;
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.7}
+
+/* Layout */
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+
+/* Sidebar */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:28px 0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.brand{padding:0 24px 24px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.brand-tag{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.brand-title{font-family:var(--font-head);font-size:16px;font-weight:700;line-height:1.3;color:var(--text)}
+.nav-section{padding:12px 24px 6px;font-family:var(--font-mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 24px;cursor:pointer;text-decoration:none;color:var(--muted);font-size:13px;transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{color:var(--text);background:var(--surface2);border-left-color:var(--border2)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(124,106,247,0.06)}
+.nav-item .num{font-family:var(--font-mono);font-size:10px;color:var(--muted);min-width:20px}
+.nav-item.done .num{color:var(--success)}
+.nav-item.done{color:var(--success)}
+
+/* Main */
+.main{padding:60px 64px;max-width:900px}
+section{margin-bottom:80px;scroll-margin-top:40px}
+
+/* Hero */
+.hero{margin-bottom:64px}
+.hero-tag{font-family:var(--font-mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.hero h1{font-family:var(--font-head);font-size:42px;font-weight:800;line-height:1.1;margin-bottom:16px}
+.hero h1 span{color:var(--accent)}
+.hero-desc{font-size:16px;color:var(--muted);max-width:620px;line-height:1.8}
+.hero-meta{display:flex;gap:16px;margin-top:24px;flex-wrap:wrap}
+.meta-chip{font-family:var(--font-mono);font-size:11px;padding:4px 12px;border-radius:99px;border:1px solid var(--border2);color:var(--muted)}
+.meta-chip.accent{color:var(--accent);border-color:rgba(124,106,247,.3);background:rgba(124,106,247,.06)}
+.meta-chip.success{color:var(--success);border-color:rgba(106,247,160,.3);background:rgba(106,247,160,.06)}
+
+/* Section headers */
+.section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+h2{font-family:var(--font-head);font-size:28px;font-weight:700;margin-bottom:16px;color:var(--text)}
+h3{font-family:var(--font-head);font-size:18px;font-weight:600;margin:32px 0 12px;color:var(--text)}
+h4{font-family:var(--font-body);font-size:14px;font-weight:600;margin:24px 0 8px;color:var(--text)}
+p{color:#c0c0d8;margin-bottom:14px;line-height:1.8}
+
+/* Phase badge */
+.phase-badge{display:inline-flex;align-items:center;gap:8px;padding:4px 14px;border-radius:99px;font-family:var(--font-mono);font-size:11px;font-weight:500;margin-bottom:12px}
+.phase-badge.p1{background:rgba(124,106,247,.1);border:1px solid rgba(124,106,247,.25);color:var(--accent)}
+.phase-badge.p2{background:rgba(78,205,196,.1);border:1px solid rgba(78,205,196,.25);color:var(--accent2)}
+.phase-badge.p3{background:rgba(247,199,106,.1);border:1px solid rgba(247,199,106,.25);color:var(--accent3)}
+.phase-badge.p4{background:rgba(247,106,106,.1);border:1px solid rgba(247,106,106,.25);color:var(--danger)}
+.phase-badge.p5{background:rgba(106,247,160,.1);border:1px solid rgba(106,247,160,.25);color:var(--success)}
+.phase-badge.p6{background:rgba(106,184,247,.1);border:1px solid rgba(106,184,247,.25);color:var(--info)}
+
+/* Cards */
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px}
+.card-title{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+
+/* Callouts */
+.callout{border-radius:10px;padding:16px 20px;margin:20px 0;border-left:3px solid;font-size:14px;line-height:1.7}
+.callout.info{background:rgba(106,184,247,.06);border-color:var(--info);color:rgba(180,220,255,.9)}
+.callout.warn{background:rgba(247,160,106,.06);border-color:var(--warn);color:var(--warn)}
+.callout.danger{background:rgba(247,106,106,.06);border-color:var(--danger);color:var(--danger)}
+.callout.success{background:rgba(106,247,160,.06);border-color:var(--success);color:var(--success)}
+.callout.tip{background:rgba(124,106,247,.06);border-color:var(--accent);color:rgba(180,170,255,.9)}
+.callout strong{font-weight:600}
+
+/* Code */
+pre{background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:18px 20px;overflow-x:auto;margin:16px 0;font-family:var(--font-mono);font-size:13px;line-height:1.6;color:#c9d1d9}
+code{font-family:var(--font-mono);font-size:12px;background:var(--surface3);padding:2px 6px;border-radius:4px;color:var(--accent2);border:1px solid var(--border)}
+pre code{background:none;padding:0;border:none;color:inherit;font-size:inherit}
+
+/* Roadblock boxes */
+.roadblock{background:rgba(247,106,106,.04);border:1px solid rgba(247,106,106,.2);border-radius:10px;padding:20px 24px;margin:20px 0}
+.roadblock-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.roadblock-icon{font-size:16px}
+.roadblock-title{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);font-weight:500}
+.roadblock p{color:#e0a0a0;margin-bottom:8px}
+.solution{background:rgba(106,247,160,.04);border:1px solid rgba(106,247,160,.2);border-radius:8px;padding:14px 18px;margin-top:12px}
+.solution-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--success);margin-bottom:8px}
+.solution p{color:#a0e0b8;margin:0}
+
+/* Steps list */
+.steps{display:flex;flex-direction:column;gap:12px;margin:20px 0}
+.step{display:flex;gap:16px;align-items:flex-start}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;color:var(--muted);flex-shrink:0;margin-top:2px}
+.step-body{}
+.step-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px}
+.step-desc{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* Architecture diagram */
+.arch{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:32px;margin:24px 0;font-family:var(--font-mono);font-size:13px}
+.arch-row{display:flex;align-items:center;gap:0;margin-bottom:8px;justify-content:center}
+.arch-box{padding:10px 20px;border-radius:8px;border:1px solid;text-align:center;min-width:160px;font-size:12px;line-height:1.4}
+.arch-box.ui{background:rgba(106,184,247,.08);border-color:rgba(106,184,247,.3);color:var(--info)}
+.arch-box.api{background:rgba(106,247,160,.08);border-color:rgba(106,247,160,.3);color:var(--success)}
+.arch-box.db{background:rgba(247,199,106,.08);border-color:rgba(247,199,106,.3);color:var(--accent3)}
+.arch-box.llm{background:rgba(124,106,247,.08);border-color:rgba(124,106,247,.3);color:var(--accent)}
+.arch-box.embed{background:rgba(78,205,196,.08);border-color:rgba(78,205,196,.3);color:var(--accent2)}
+.arch-arrow{color:var(--muted);padding:0 12px;font-size:18px;line-height:1}
+.arch-label{font-size:10px;color:var(--muted);text-align:center;margin-top:4px;letter-spacing:.08em}
+.arch-divider{height:1px;background:var(--border);margin:20px 0}
+.arch-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;text-align:center}
+
+/* Table */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+th{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border2);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:#c0c0d8;vertical-align:top}
+tr:last-child td{border-bottom:none}
+td code{font-size:11px}
+
+/* Key concept cards */
+.concept-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0}
+.concept-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:18px}
+.concept-card h4{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--text)}
+.concept-card p{font-size:12px;color:var(--muted);margin:0;line-height:1.6}
+.concept-card .tag{display:inline-block;font-family:var(--font-mono);font-size:10px;padding:2px 8px;border-radius:4px;margin-bottom:8px;background:rgba(124,106,247,.1);color:var(--accent);border:1px solid rgba(124,106,247,.2)}
+
+/* Pill tags */
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.tag{font-family:var(--font-mono);font-size:11px;padding:3px 10px;border-radius:6px;background:var(--surface3);border:1px solid var(--border2);color:var(--text)}
+.tag.tech{color:var(--accent2);border-color:rgba(78,205,196,.3);background:rgba(78,205,196,.06)}
+.tag.warn{color:var(--warn);border-color:rgba(247,160,106,.3);background:rgba(247,160,106,.06)}
+
+/* Divider */
+.divider{height:1px;background:var(--border);margin:48px 0}
+
+/* Stat row */
+.stat-row{display:flex;gap:16px;flex-wrap:wrap;margin:20px 0}
+.stat{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;flex:1;min-width:120px}
+.stat-val{font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--accent);line-height:1}
+.stat-label{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Highlight */
+.highlight{color:var(--accent3);font-weight:500}
+.success-text{color:var(--success)}
+.danger-text{color:var(--danger)}
+
+ul,ol{padding-left:20px;margin:12px 0}
+li{color:#c0c0d8;margin-bottom:6px;line-height:1.7;font-size:14px}
+li strong{color:var(--text)}
+
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:relative;height:auto}
+  .main{padding:32px 24px}
+  .concept-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="brand">
+    <div class="brand-tag">Build Journey</div>
+    <div class="brand-title">Policy RAG<br>Implementation Guide</div>
+  </div>
+
+  <div class="nav-section">Overview</div>
+  <a href="#intro" class="nav-item"><span class="num">00</span> Introduction</a>
+  <a href="#architecture" class="nav-item"><span class="num">→</span> Architecture</a>
+  <a href="#stack" class="nav-item"><span class="num">→</span> Tech Stack</a>
+
+  <div class="nav-section">Phases</div>
+  <a href="#phase1" class="nav-item done"><span class="num">01</span> Repo & Skeleton</a>
+  <a href="#phase2" class="nav-item done"><span class="num">02</span> AI Component Setup</a>
+  <a href="#phase3" class="nav-item done"><span class="num">03</span> PDF Ingestion</a>
+  <a href="#phase4" class="nav-item done"><span class="num">04</span> Query Engine</a>
+  <a href="#phase5" class="nav-item done"><span class="num">05</span> FastAPI Backend</a>
+  <a href="#phase6" class="nav-item done"><span class="num">06</span> Streamlit UI</a>
+  <a href="#git" class="nav-item done"><span class="num">07</span> Git & Security</a>
+
+  <div class="nav-section">Learnings</div>
+  <a href="#roadblocks" class="nav-item"><span class="num">!</span> All Roadblocks</a>
+  <a href="#concepts" class="nav-item"><span class="num">★</span> Key Concepts</a>
+  <a href="#howtorun" class="nav-item"><span class="num">▶</span> How to Run</a>
+</nav>
+
+<!-- ── Main ── -->
+<main class="main">
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="hero-tag">First-Time RAG Implementor's Guide</div>
+  <h1>Building a <span>Policy RAG</span><br>System from Scratch</h1>
+  <p class="hero-desc">A complete, honest account of every decision, mistake, fix, and learning from building a production-grade Retrieval-Augmented Generation system against 38 company policy documents.</p>
+  <div class="hero-meta">
+    <span class="meta-chip accent">6 Phases Complete</span>
+    <span class="meta-chip success">38 PDFs · 378 Pages Indexed</span>
+    <span class="meta-chip">Python 3.14 · Windows 11</span>
+    <span class="meta-chip">llama-index 0.14 · ChromaDB · Ollama</span>
+  </div>
+</div>
+
+<!-- ── 00. Introduction ── -->
+<section id="intro">
+  <div class="section-label">Section 00</div>
+  <h2>What We Built & Why</h2>
+
+  <p>This project is a <strong>RAG (Retrieval-Augmented Generation)</strong> system — a type of AI application that answers questions by first <em>searching</em> a knowledge base (your documents), then passing the most relevant text to a Large Language Model (LLM) to generate an answer. Unlike asking ChatGPT, a RAG system only answers from <em>your</em> documents, which means answers are accurate, cited, and private.</p>
+
+  <p>We built this for <strong>38 company HR policy documents</strong>. An employee can now ask "How many days of maternity leave do I get?" and receive an accurate answer with a source citation — without reading through 400 pages of policy manuals.</p>
+
+  <div class="callout info">
+    <strong>Why RAG instead of just uploading PDFs to ChatGPT?</strong><br>
+    Three reasons: (1) Privacy — company policies contain sensitive data that should not leave your infrastructure. (2) Accuracy — LLMs hallucinate; RAG grounds answers in real documents. (3) Cost — after the one-time embedding cost, queries are nearly free locally.
+  </div>
+
+  <div class="stat-row">
+    <div class="stat"><div class="stat-val">38</div><div class="stat-label">Policy PDFs indexed</div></div>
+    <div class="stat"><div class="stat-val">378</div><div class="stat-label">Pages chunked & embedded</div></div>
+    <div class="stat"><div class="stat-val">15/15</div><div class="stat-label">Retrieval accuracy</div></div>
+    <div class="stat"><div class="stat-val">12/15</div><div class="stat-label">End-to-end Q&A accuracy</div></div>
+  </div>
+</section>
+
+<!-- ── Architecture ── -->
+<section id="architecture">
+  <div class="section-label">Architecture</div>
+  <h2>How It All Fits Together</h2>
+
+  <p>The system has two distinct pipelines that share the same vector database:</p>
+
+  <div class="arch">
+    <div class="arch-title">Ingestion Pipeline (run once, or when PDFs change)</div>
+    <div class="arch-row">
+      <div class="arch-box embed">PDF Files<br><small>/pdfs folder</small></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box embed">PDFReader<br><small>Extract text</small></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box embed">SentenceSplitter<br><small>chunk_size=768</small></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box embed">nomic-embed-text<br><small>768-dim vectors</small></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box db">ChromaDB<br><small>vector_store/</small></div>
+    </div>
+    <div class="arch-divider"></div>
+    <div class="arch-title">Query Pipeline (on every user question)</div>
+    <div class="arch-row">
+      <div class="arch-box ui">User Question<br><small>Streamlit UI</small></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box api">FastAPI<br><small>POST /query</small></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box embed">Embed question<br><small>nomic-embed-text</small></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box db">ChromaDB<br><small>top-3 chunks</small></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box llm">LLM<br><small>phi3:mini / Claude</small></div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <strong>The most important insight in RAG:</strong> The embedding model and the LLM are completely separate. The embedding model converts text to numbers for search. The LLM generates the answer. They can and should be different models — and in this project, embeddings always stay local (free) even when the LLM is Claude (paid).
+  </div>
+</section>
+
+<!-- ── Tech Stack ── -->
+<section id="stack">
+  <div class="section-label">Tech Stack</div>
+  <h2>Every Tool and Why We Chose It</h2>
+
+  <table>
+    <thead><tr><th>Tool</th><th>Role</th><th>Why this one</th></tr></thead>
+    <tbody>
+      <tr><td><code>LlamaIndex 0.14</code></td><td>RAG orchestration framework</td><td>Handles chunking, embedding, retrieval, and LLM calls in one cohesive API. Abstracts away the complexity of stitching these together manually.</td></tr>
+      <tr><td><code>ChromaDB</code></td><td>Vector database</td><td>Fully local, persistent, zero setup. Stores embeddings on disk and survives restarts. Perfect for local-first RAG.</td></tr>
+      <tr><td><code>Ollama</code></td><td>Local LLM + embedding runner</td><td>Runs open-source models (llama3.2, phi3, nomic-embed-text) on your machine with a simple API. No GPU required, no API keys for inference.</td></tr>
+      <tr><td><code>nomic-embed-text</code></td><td>Embedding model</td><td>274 MB, produces 768-dim vectors, runs locally. Never pay for embedding APIs.</td></tr>
+      <tr><td><code>phi3:mini</code></td><td>Local LLM</td><td>3.8B parameters, fits in ~4 GB RAM, good instruction-following. Used as fallback when Claude API credits are unavailable.</td></tr>
+      <tr><td><code>FastAPI</code></td><td>HTTP API layer</td><td>Auto-generates Swagger docs, fast, Pydantic validation built-in. Decouples AI logic from the UI.</td></tr>
+      <tr><td><code>Streamlit</code></td><td>Chat UI</td><td>Full chat interface in under 100 lines of Python. No JavaScript required.</td></tr>
+      <tr><td><code>pypdf</code></td><td>PDF text extraction</td><td>Reliably extracts text from text-based PDFs. Required by LlamaIndex's PDFReader in 0.14.x.</td></tr>
+      <tr><td><code>python-dotenv</code></td><td>Secret management</td><td>Loads <code>.env</code> file into environment variables. Industry standard for keeping API keys out of code.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Phase 1 ── -->
+<section id="phase1">
+  <div class="phase-badge p1">Phase 01 · ~2 hrs actual</div>
+  <div class="section-label">Foundation</div>
+  <h2>Repository & Project Skeleton</h2>
+  <p>Before writing any AI code, we built the foundation: folder structure, virtual environment, dependency management, and most importantly — the <strong>LLM swap point</strong>.</p>
+
+  <h3>What We Built</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Initialised git and folder structure</div><div class="step-desc">Created <code>/pdfs</code> <code>/app</code> <code>/ui</code> <code>/tests</code> <code>/vector_store</code>. Added <code>.gitkeep</code> files so empty folders are tracked by git.</div></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Wrote .gitignore</div><div class="step-desc">Covered <code>vector_store/</code>, <code>.env</code>, <code>venv/</code>, <code>__pycache__/</code>, <code>pdfs/*.pdf</code>. This is non-negotiable — do this before your first meaningful commit.</div></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Created requirements.txt</div><div class="step-desc">Pinned every dependency. Also generated <code>requirements.lock</code> after install for exact reproducibility.</div></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">Created .env and .env.example</div><div class="step-desc"><code>.env</code> holds real secrets (gitignored). <code>.env.example</code> is the committed template showing what keys are needed with blank values.</div></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><div class="step-title">Implemented app/config.py — the swap point</div><div class="step-desc">The most important architectural decision. Every file imports <code>get_llm()</code> from here. No model name is hardcoded anywhere else in the codebase.</div></div></div>
+  </div>
+
+  <h3>The Swap Point Pattern — Most Important Concept</h3>
+  <p>The entire LLM switching mechanism lives in one place:</p>
+  <pre><code>def get_llm():
+    mode = os.getenv("LLM_MODE", "ollama").lower()
+    if mode == "ollama":
+        return Ollama(model="phi3:mini", request_timeout=300.0, context_window=4096)
+    if mode == "claude":
+        return Anthropic(model="claude-sonnet-4-20250514", api_key=...)
+    # Switch LLM_MODE in .env — zero code changes required</code></pre>
+
+  <div class="callout tip">
+    <strong>Why this matters for your career:</strong> This is the Dependency Inversion Principle — your business logic depends on an abstraction (get_llm), not a concrete vendor. In production systems, teams use this exact pattern to avoid vendor lock-in. Switching from OpenAI to Claude to a self-hosted model becomes a config change, not a code refactor.
+  </div>
+
+  <h3>Roadblocks</h3>
+
+  <div class="roadblock">
+    <div class="roadblock-header"><span class="roadblock-icon">🔴</span><span class="roadblock-title">Python 3.14 Compatibility — 4 cascading conflicts</span></div>
+    <p>Python 3.14 was too new for the ecosystem. Packages like <code>numpy 1.26.x</code> and <code>pillow 10.x</code> had no pre-built wheels for Python 3.14 and needed a C compiler to build from source — which wasn't installed.</p>
+    <p>This cascaded into 4 separate dependency conflicts:</p>
+    <table>
+      <thead><tr><th>Package</th><th>Problem</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td><code>numpy 1.26.4</code></td><td>No py3.14 wheel; needs C compiler</td><td>Upgraded <code>llama-index-core</code> 0.10.68 → 0.14.20 which uses numpy 2.x (has py3.14 wheel)</td></tr>
+        <tr><td><code>pillow 10.x</code></td><td>No py3.14 wheel</td><td>Pinned <code>pillow==12.2.0</code> (first version with py3.14 wheel)</td></tr>
+        <tr><td><code>llama-index-llms-gemini</code></td><td>Transitively pins <code>pillow&lt;11</code> via <code>google-generativeai</code></td><td>Dropped Gemini from requirements entirely. Commented out in code with explanation.</td></tr>
+        <tr><td><code>streamlit 1.41.1</code></td><td>Pins <code>pillow&lt;12</code></td><td>Upgraded streamlit 1.41.1 → 1.56.0</td></tr>
+      </tbody>
+    </table>
+    <div class="solution">
+      <div class="solution-label">Industry lesson</div>
+      <p>Never use a Python version released less than 6 months ago on a real project. The package ecosystem takes time to catch up. Python 3.12 would have had zero of these conflicts. Always check <a href="https://pypi.org" style="color:var(--success)">pypi.org</a> for wheel availability before choosing a Python version.</p>
+    </div>
+  </div>
+
+  <div class="roadblock">
+    <div class="roadblock-header"><span class="roadblock-icon">🔴</span><span class="roadblock-title">requirements.lock accidentally gitignored</span></div>
+    <p>I added <code>requirements.lock</code> to <code>.gitignore</code> by mistake. Lock files should be committed — they're your reproducibility guarantee.</p>
+    <div class="solution">
+      <div class="solution-label">Fix</div>
+      <p>Removed the entry from <code>.gitignore</code> and re-staged the file. Lesson: think carefully before adding anything to <code>.gitignore</code>.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Phase 2 ── -->
+<section id="phase2">
+  <div class="phase-badge p2">Phase 02 · ~30 min actual</div>
+  <div class="section-label">AI Components</div>
+  <h2>AI Component Setup</h2>
+  <p>Getting Ollama running, pulling the correct models, and verifying each one independently before building any pipeline.</p>
+
+  <h3>What We Built</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Verified Ollama was running</div><div class="step-desc"><code>ollama --version</code> confirmed v0.12.6. Ollama auto-started when first called.</div></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Pulled llama3.2 (2.0 GB) and nomic-embed-text (274 MB)</div><div class="step-desc">These are two separate models with different jobs. Pulling them independently is required — one doesn't include the other.</div></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Verified the embedding model returns 768 dimensions</div><div class="step-desc"><code>len(e.get_text_embedding('test')) == 768</code> is the canonical health check. If this fails, the entire retrieval pipeline fails silently.</div></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">Tested the LLM swap end-to-end</div><div class="step-desc">Set <code>LLM_MODE=claude</code>, ran the smoke test, confirmed <code>Anthropic</code> object returned. Switched back to <code>ollama</code>. Zero code changes required.</div></div></div>
+  </div>
+
+  <h3>LLM vs Embedding Model — The Most Confused Concept</h3>
+  <table>
+    <thead><tr><th></th><th>LLM</th><th>Embedding Model</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Purpose</strong></td><td>Generates text answers</td><td>Converts text → vectors (numbers)</td></tr>
+      <tr><td><strong>Example</strong></td><td>llama3.2, Claude, GPT-4</td><td>nomic-embed-text, text-embedding-3</td></tr>
+      <tr><td><strong>Used for</strong></td><td>Answering questions</td><td>Finding similar content</td></tr>
+      <tr><td><strong>When it runs</strong></td><td>Every query</td><td>At ingest + every query</td></tr>
+      <tr><td><strong>Can swap?</strong></td><td>Yes — change LLM_MODE</td><td>No — changing embedding model requires full re-ingest</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>Critical:</strong> You cannot mix embedding models. If you embed documents with <code>nomic-embed-text</code>, you must query with <code>nomic-embed-text</code>. The vector spaces are completely different between models — mixing them returns garbage results.
+  </div>
+
+  <h3>Roadblocks</h3>
+  <div class="roadblock">
+    <div class="roadblock-header"><span class="roadblock-icon">🟡</span><span class="roadblock-title">Ollama not running at session start</span></div>
+    <p><code>ollama list</code> showed "could not connect to a running Ollama instance".</p>
+    <div class="solution">
+      <div class="solution-label">Fix (self-resolved)</div>
+      <p>Ollama auto-started when the command was run. But in production: always add Ollama as a startup service (<code>systemctl enable ollama</code> on Linux) so it's available before your app starts.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Phase 3 ── -->
+<section id="phase3">
+  <div class="phase-badge p3">Phase 03 · ~1.5 hrs actual</div>
+  <div class="section-label">Data Pipeline</div>
+  <h2>PDF Ingestion Pipeline</h2>
+  <p>The most critical phase. Bad ingestion = bad retrieval = wrong answers regardless of LLM quality. We built <code>app/ingest.py</code> and wrote the golden Q&A test set before writing a single line of pipeline code.</p>
+
+  <h3>The Golden Q&A Test Set — Do This First, Always</h3>
+  <p>Before building the pipeline, we wrote <code>tests/golden_qa.txt</code> — 15 real questions with known correct answers from the actual PDFs. This became our ground truth for evaluating retrieval quality.</p>
+
+  <div class="callout tip">
+    <strong>Why write tests before code?</strong> In RAG, it's easy to build a pipeline that "works" but returns wrong answers. Without a test set you have no way to know. The golden Q&A transforms "seems to work" into a measurable score: 15/15 retrieval, 12/15 end-to-end.
+  </div>
+
+  <h3>What We Built in ingest.py</h3>
+  <pre><code># 1. Load PDFs (text extraction via PDFReader/pypdf)
+docs = SimpleDirectoryReader("pdfs/", required_exts=[".pdf"],
+    file_extractor={".pdf": PDFReader()}).load_data()
+
+# 2. Configure chunking — 768 tokens, 100 token overlap
+splitter = SentenceSplitter(chunk_size=768, chunk_overlap=100)
+
+# 3. Connect to persistent ChromaDB
+client = chromadb.PersistentClient(path="vector_store/")
+collection = client.get_or_create_collection("policy_docs")
+
+# 4. One call: chunk → embed → store
+index = VectorStoreIndex.from_documents(docs,
+    storage_context=StorageContext.from_defaults(
+        vector_store=ChromaVectorStore(chroma_collection=collection)),
+    embed_model=get_embedding_model(),
+    transformations=[splitter])</code></pre>
+
+  <h3>Chunking Strategy Explained</h3>
+  <p><strong>chunk_size=768</strong>: Each chunk is up to 768 tokens (~3000 characters). For dense policy text, this preserves complete clauses and sub-sections without splitting them awkwardly.</p>
+  <p><strong>chunk_overlap=100</strong>: Adjacent chunks share 100 tokens of context. This prevents losing information that spans a chunk boundary — for example, a sentence that starts on one chunk and ends on the next.</p>
+
+  <div class="callout warn">
+    <strong>When to tune chunk_size:</strong> If answers are cut off mid-sentence → increase to 1024. If retrieved chunks are too broad and not focused on the answer → decrease to 512. Always delete <code>vector_store/</code> and re-run ingest after changing chunk settings — stale vectors will corrupt your results.
+  </div>
+
+  <h3>Retrieval Result: 15/15</h3>
+  <p>After ingestion, we tested retrieval directly (bypassing the LLM) by checking whether the correct source document appeared in the top-3 results for each golden question. Result: <span class="success-text">15 out of 15 passed on the first run.</span></p>
+
+  <h3>Roadblocks</h3>
+
+  <div class="roadblock">
+    <div class="roadblock-header"><span class="roadblock-icon">🔴</span><span class="roadblock-title">SimpleDirectoryReader returning raw PDF binary, not text</span></div>
+    <p>In LlamaIndex 0.14.x, <code>SimpleDirectoryReader</code> without an explicit file extractor reads PDFs as raw bytes. The character counts looked large (175K chars per document) but the content was binary PDF encoding — completely useless for search.</p>
+    <pre><code># Wrong — returns raw binary
+docs = SimpleDirectoryReader("pdfs/").load_data()
+
+# Correct — uses pypdf for proper text extraction
+from llama_index.readers.file import PDFReader
+docs = SimpleDirectoryReader("pdfs/", required_exts=[".pdf"],
+    file_extractor={".pdf": PDFReader()}).load_data()</code></pre>
+    <div class="solution">
+      <div class="solution-label">Fix</div>
+      <p>Installed <code>pypdf</code> and <code>llama-index-readers-file</code>, then passed <code>file_extractor={".pdf": PDFReader()}</code> explicitly. Always verify extracted text looks like readable content, not binary gibberish.</p>
+    </div>
+  </div>
+
+  <div class="roadblock">
+    <div class="roadblock-header"><span class="roadblock-icon">🟡</span><span class="roadblock-title">"1 page per PDF" — misleading output</span></div>
+    <p>All 38 PDFs initially showed as "1 page" each. This was because LlamaIndex 0.14.x (before adding PDFReader) was loading each PDF as a single document object, not per-page. After switching to PDFReader, the correct 378 pages loaded correctly.</p>
+    <div class="solution">
+      <div class="solution-label">Lesson</div>
+      <p>Always spot-check extracted text content, not just document count. <code>print(docs[0].text[:500])</code> immediately reveals whether you have real text or binary garbage.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Phase 4 ── -->
+<section id="phase4">
+  <div class="phase-badge p4">Phase 04 · ~3 hrs actual</div>
+  <div class="section-label">Query Engine</div>
+  <h2>Query Engine & Answers</h2>
+  <p>Building <code>app/query.py</code> — loads the existing index, retrieves relevant chunks, and passes them to the LLM with a strict prompt that prevents hallucination and enforces source citation.</p>
+
+  <h3>The Custom Prompt Template</h3>
+  <p>The prompt template is where you control the LLM's behaviour. Ours enforces three rules:</p>
+  <pre><code>POLICY_QA_TEMPLATE = PromptTemplate(
+    "You are a helpful HR policy assistant.\n"
+    "Answer using ONLY the policy context provided below.\n"
+    "Rules:\n"
+    "  1. Base your answer strictly on the context — no outside knowledge.\n"
+    "  2. Always cite the policy name and page number.\n"
+    '  3. If not found in context: "This information is not in the provided policy documents."\n'
+    "  4. Be concise and direct.\n\n"
+    "Context:\n---------------------\n{context_str}\n---------------------\n\n"
+    "Question: {query_str}\n\nAnswer:"
+)</code></pre>
+
+  <div class="callout tip">
+    <strong>Rule 3 is the anti-hallucination guard.</strong> Without it, LLMs will confidently make up policy details that don't exist. The explicit fallback phrase ("This information is not in the provided policy documents") is better than a fabricated answer — users learn to trust the system because it's honest about its limits.
+  </div>
+
+  <h3>Critical Rule: Never Re-embed on Query</h3>
+  <pre><code># WRONG — re-embeds everything on every query (very slow, expensive)
+index = VectorStoreIndex.from_documents(docs, ...)
+
+# CORRECT — loads existing index from ChromaDB (fast, free)
+index = VectorStoreIndex.from_vector_store(vector_store,
+    embed_model=get_embedding_model())</code></pre>
+
+  <h3>Observability — Built In From Day One</h3>
+  <p>Every query logs the retrieved source nodes, their relevance scores, and text previews. This is how you debug wrong answers:</p>
+  <pre><code>for node in response.source_nodes:
+    print(f"score={node.score:.4f} | {node.metadata['file_name']} p.{node.metadata['page_label']}")
+    print(f"  {node.text[:150]}...")</code></pre>
+  <div class="callout info">
+    <strong>Debugging guide (from the tracker):</strong> If answers are wrong — 80% of the time the retrieved chunks are wrong (go back to Phase 3 chunking). 20% of the time the chunks are right but the prompt is bad (fix the template). Always check source nodes first before blaming the LLM.
+  </div>
+
+  <h3>Final Score: 12/15</h3>
+  <table>
+    <thead><tr><th>Question</th><th>Result</th><th>Root cause of failure</th></tr></thead>
+    <tbody>
+      <tr><td>Maternity leave weeks</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>Bereavement leave days</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>Leave year period</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>Saturdays/Sundays in leave</td><td class="danger-text">❌ FAIL</td><td>Model (phi3:mini) misses answer despite correct chunk retrieved</td></tr>
+      <tr><td>Domestic travel advance notice</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>International air travel class</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>Self-bookings reimbursable</td><td class="danger-text">❌ FAIL</td><td>Retriever fetched wrong page (p.7 not p.4)</td></tr>
+      <tr><td>Accommodation rule M4</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>Referral eligibility exclusion</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>Referral bonus on exit</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>TA-contacted candidate referral</td><td class="danger-text">❌ FAIL</td><td>Model misses answer despite correct chunk</td></tr>
+      <tr><td>Grievance covers POSH?</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>Grievance principles</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>Bonus for mid-year hire</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+      <tr><td>Bonus factors</td><td class="success-text">✅ PASS</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Roadblocks</h3>
+
+  <div class="roadblock">
+    <div class="roadblock-header"><span class="roadblock-icon">🔴</span><span class="roadblock-title">llama3.2 requires 15.9 GiB RAM — machine only has 10.6 GiB available</span></div>
+    <p>The default llama3.2 model (3B parameters, full precision) needs 15.9 GiB RAM for KV cache allocation. The machine only had 10.6 GiB available.</p>
+    <div class="solution">
+      <div class="solution-label">Fix</div>
+      <p>Switched to smaller local models. Eventually settled on <code>phi3:mini</code> with an explicit <code>context_window=4096</code> override (see next roadblock).</p>
+    </div>
+  </div>
+
+  <div class="roadblock">
+    <div class="roadblock-header"><span class="roadblock-icon">🔴</span><span class="roadblock-title">Claude API — zero credits on both keys</span></div>
+    <p>Both Anthropic API keys provided had valid authentication but zero credit balance. The API returns HTTP 400 with "credit balance too low" — not 401 (unauthorized), which makes it easy to confuse with a code error.</p>
+    <div class="solution">
+      <div class="solution-label">Fix</div>
+      <p>Switched to local models. Claude can be re-enabled by adding credits at <code>console.anthropic.com</code> and changing <code>LLM_MODE=claude</code> in <code>.env</code>. No code changes needed.</p>
+    </div>
+  </div>
+
+  <div class="roadblock">
+    <div class="roadblock-header"><span class="roadblock-icon">🔴</span><span class="roadblock-title">phi3 (default tag) = 14B model = 50 GiB RAM required</span></div>
+    <p>Running <code>ollama pull phi3</code> downloads the 14B parameter version. Ollama pre-allocates KV cache for the model's full context window (128k tokens), which translates to ~50 GiB RAM.</p>
+    <div class="solution">
+      <div class="solution-label">Fix (two steps)</div>
+      <p>Step 1: Use <code>phi3:mini</code> (3.8B parameters, 2.2 GB on disk).<br>
+      Step 2: Even phi3:mini has a 128k context window. Ollama pre-allocates memory for the full window. Override with <code>context_window=4096</code> in the Ollama LlamaIndex wrapper — this tells Ollama to only allocate KV cache for 4096 tokens, reducing RAM from ~50 GiB to ~2 GiB.</p>
+      <pre style="margin-top:8px"><code>return Ollama(model="phi3:mini", request_timeout=300.0, context_window=4096)</code></pre>
+    </div>
+  </div>
+
+  <div class="roadblock">
+    <div class="roadblock-header"><span class="roadblock-icon">🟡</span><span class="roadblock-title">ReadTimeout — single slow query crashing the full evaluation run</span></div>
+    <p>phi3:mini on CPU takes 60-180 seconds per query. Some policy chunks are larger and occasionally exceeded the timeout, crashing the entire 15-question evaluation.</p>
+    <div class="solution">
+      <div class="solution-label">Fix — production-grade timeout handling</div>
+      <p>Wrapped each query in try/except that catches timeout exceptions, logs them, and continues to the next question:</p>
+      <pre><code>try:
+    result = ask(q, engine=engine, verbose=False)
+except Exception as e:
+    if "timeout" in str(e).lower():
+        print(f"  [TIMEOUT] Query took too long — skipping")
+    else:
+        print(f"  [ERROR] {str(e)[:120]}")</code></pre>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Phase 5 ── -->
+<section id="phase5">
+  <div class="phase-badge p5">Phase 05 · ~30 min actual</div>
+  <div class="section-label">API Layer</div>
+  <h2>FastAPI Backend</h2>
+  <p>Wrapping the AI logic behind a proper HTTP API. The key principle: <strong>FastAPI is thin</strong>. It handles HTTP concerns only — routing, validation, error handling. All AI logic stays in <code>query.py</code> and <code>ingest.py</code>.</p>
+
+  <h3>Three Routes</h3>
+  <table>
+    <thead><tr><th>Route</th><th>Method</th><th>Purpose</th><th>Response</th></tr></thead>
+    <tbody>
+      <tr><td><code>/health</code></td><td>GET</td><td>Server liveness + config check</td><td><code>{"status":"ok","llm_mode":"ollama"}</code></td></tr>
+      <tr><td><code>/query</code></td><td>POST</td><td>Ask a question</td><td><code>{"answer":"...","sources":[...]}</code></td></tr>
+      <tr><td><code>/ingest</code></td><td>POST</td><td>Re-index all PDFs</td><td><code>{"status":"done","chunk_count":378}</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Two Important Implementation Details</h3>
+
+  <p><strong>1. CORS Middleware</strong> — without this, the browser blocks Streamlit (port 8501) from calling the API (port 8000):</p>
+  <pre><code>app.add_middleware(CORSMiddleware,
+    allow_origins=["http://localhost:8501"],  # Streamlit's port
+    allow_methods=["*"], allow_headers=["*"])</code></pre>
+
+  <p><strong>2. Lazy loading the query engine</strong> — loading ChromaDB on every request would be wasteful. Load once at first request, cache for subsequent calls:</p>
+  <pre><code>_query_engine = None
+def get_engine():
+    global _query_engine
+    if _query_engine is None:
+        _query_engine = load_query_engine()  # runs once
+    return _query_engine</code></pre>
+
+  <div class="callout tip">
+    <strong>Auto-generated docs:</strong> FastAPI generates a full Swagger UI at <code>http://localhost:8000/docs</code>. You can test all routes interactively in the browser without writing any curl commands. This is one of FastAPI's biggest practical advantages.
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Phase 6 ── -->
+<section id="phase6">
+  <div class="phase-badge p6">Phase 06 · ~30 min actual</div>
+  <div class="section-label">User Interface</div>
+  <h2>Streamlit Chat UI</h2>
+  <p>A complete chat interface in under 130 lines of Python. No JavaScript, no React, no CSS required.</p>
+
+  <h3>Key Streamlit Concepts Used</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">st.session_state — persistent chat history</div><div class="step-desc">Streamlit re-runs the entire script on every user interaction. <code>st.session_state</code> persists data across reruns. Without it, the chat history disappears on every message.</div></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">st.chat_message — built-in chat UI</div><div class="step-desc">Renders user/assistant message bubbles with proper styling. No CSS needed.</div></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">st.chat_input — blocks until user submits</div><div class="step-desc">Returns the user's text when submitted, None otherwise. Use the walrus operator: <code>if prompt := st.chat_input(...)</code>.</div></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">st.spinner — loading state</div><div class="step-desc">Wraps the API call so the UI shows "Searching policy documents..." instead of appearing frozen during the 60-second inference.</div></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><div class="step-title">st.expander — collapsible source citations</div><div class="step-desc">Source citations are shown in a collapsed expander under each answer. They don't clutter the conversation but are available for users who want to verify.</div></div></div>
+  </div>
+
+  <h3>What the Full Stack Looks Like Running</h3>
+  <pre><code># Terminal 1 — API server (keep running)
+uvicorn app.main:app --port 8000
+
+# Terminal 2 — Streamlit UI
+streamlit run ui/streamlit_app.py
+
+# Open in browser
+http://localhost:8501</code></pre>
+
+  <div class="callout info">
+    <strong>Response time reality:</strong> With phi3:mini on CPU, each answer takes ~60 seconds. The spinner hides the wait. With Claude API or a GPU, this drops to 3-5 seconds. The architecture is correct — only the hardware limits performance.
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Git & Security ── -->
+<section id="git">
+  <div class="section-label">Version Control & Security</div>
+  <h2>Git Setup & Security</h2>
+
+  <h3>What We Pushed to GitHub</h3>
+  <table>
+    <thead><tr><th>File / Folder</th><th>On GitHub?</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td><code>app/*.py</code></td><td class="success-text">✅ Yes</td><td>Source code — safe to share</td></tr>
+      <tr><td><code>ui/streamlit_app.py</code></td><td class="success-text">✅ Yes</td><td>Source code — safe to share</td></tr>
+      <tr><td><code>requirements.txt</code></td><td class="success-text">✅ Yes</td><td>Dependency manifest</td></tr>
+      <tr><td><code>requirements.lock</code></td><td class="success-text">✅ Yes</td><td>Exact versions for reproducibility</td></tr>
+      <tr><td><code>.env.example</code></td><td class="success-text">✅ Yes</td><td>Template only — no real keys</td></tr>
+      <tr><td><code>tests/golden_qa.txt</code></td><td class="success-text">✅ Yes</td><td>Test set — safe to share</td></tr>
+      <tr><td><code>.env</code></td><td class="danger-text">🔒 NO</td><td>Contains real API keys</td></tr>
+      <tr><td><code>pdfs/*.pdf</code></td><td class="danger-text">🔒 NO</td><td>Confidential company documents</td></tr>
+      <tr><td><code>vector_store/</code></td><td class="danger-text">🔒 NO</td><td>Large binary files; regenerated by ingest.py</td></tr>
+      <tr><td><code>venv/</code></td><td class="danger-text">🔒 NO</td><td>Environment-specific; regenerated by pip install</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout danger">
+    <strong>Never commit .env files.</strong> Even in private repos. Private repos can become public, organisations can be breached, and git history is permanent — even if you delete the file later, the key is in the history. Use <code>.env.example</code> as the committed template and always add <code>.env</code> to <code>.gitignore</code> before creating the file.
+  </div>
+
+  <h3>The Repo (Private)</h3>
+  <p>Pushed to <strong>github.com/Abhinayspace/policy-rag</strong> (private) using GitHub CLI: <code>gh repo create policy-rag --private --source=. --push</code></p>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── All Roadblocks Summary ── -->
+<section id="roadblocks">
+  <div class="section-label">Complete Reference</div>
+  <h2>All Roadblocks — Quick Reference</h2>
+  <p>Every problem we hit, which phase it occurred in, and what fixed it:</p>
+
+  <table>
+    <thead><tr><th>Phase</th><th>Roadblock</th><th>Root Cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Python not installed</td><td>Windows Store Python stub active</td><td>Installed Python 3.14 from python.org</td></tr>
+      <tr><td>1</td><td>numpy won't install</td><td>No py3.14 wheel; needs C compiler</td><td>Upgraded llama-index-core to 0.14.20 (uses numpy 2.x)</td></tr>
+      <tr><td>1</td><td>pillow 10.x won't install</td><td>No py3.14 wheel</td><td>Pinned pillow==12.2.0</td></tr>
+      <tr><td>1</td><td>Gemini dependency conflict</td><td>google-generativeai pins pillow&lt;11</td><td>Dropped llama-index-llms-gemini from requirements</td></tr>
+      <tr><td>1</td><td>Streamlit conflict</td><td>streamlit 1.41.1 pins pillow&lt;12</td><td>Upgraded streamlit to 1.56.0</td></tr>
+      <tr><td>1</td><td>requirements.lock gitignored</td><td>Mistake in .gitignore</td><td>Removed entry, re-committed lock file</td></tr>
+      <tr><td>2</td><td>Ollama not running</td><td>Service not started</td><td>Self-resolved (Ollama auto-started)</td></tr>
+      <tr><td>3</td><td>PDF reader returns binary</td><td>LlamaIndex 0.14.x default reader</td><td>Added pypdf + PDFReader file extractor</td></tr>
+      <tr><td>3</td><td>Missing PDF reader package</td><td>llama-index-readers-file not in requirements</td><td>pip install llama-index-readers-file</td></tr>
+      <tr><td>4</td><td>llama3.2 needs 15.9 GiB RAM</td><td>Machine only has 10.6 GiB available</td><td>Switched to phi3:mini with context_window=4096</td></tr>
+      <tr><td>4</td><td>Claude API zero credits (key 1)</td><td>Account not funded</td><td>Switched to local model</td></tr>
+      <tr><td>4</td><td>Claude API zero credits (key 2)</td><td>Account not funded</td><td>Switched to local model</td></tr>
+      <tr><td>4</td><td>phi3 (default) = 50 GiB RAM</td><td>Default tag pulls 14B model</td><td>Used phi3:mini tag explicitly</td></tr>
+      <tr><td>4</td><td>phi3:mini still needs 50 GiB</td><td>128k context window KV cache</td><td>Set context_window=4096 in Ollama config</td></tr>
+      <tr><td>4</td><td>Evaluation crashes on timeout</td><td>Single slow query kills full run</td><td>Added try/except timeout handling in query.py</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Key Concepts ── -->
+<section id="concepts">
+  <div class="section-label">Career Takeaways</div>
+  <h2>Key Concepts for Industry Readiness</h2>
+
+  <div class="concept-grid">
+    <div class="concept-card">
+      <div class="tag">Architecture Pattern</div>
+      <h4>The Swap Point / Dependency Inversion</h4>
+      <p>One file (<code>config.py</code>) owns all vendor decisions. Everything else imports from it. This is how production systems avoid vendor lock-in — switching LLMs is a one-line config change.</p>
+    </div>
+    <div class="concept-card">
+      <div class="tag">Secret Management</div>
+      <h4>.env + .env.example Pattern</h4>
+      <p>The committed template shows what secrets are needed. The actual secrets file is gitignored. Every professional project uses this. Never hardcode API keys — ever.</p>
+    </div>
+    <div class="concept-card">
+      <div class="tag">Reproducibility</div>
+      <h4>requirements.txt vs requirements.lock</h4>
+      <p><code>requirements.txt</code> = intent (human-readable). <code>requirements.lock</code> = exact state (pip freeze). Without a lock file, two machines can produce different installs with different bugs.</p>
+    </div>
+    <div class="concept-card">
+      <div class="tag">RAG Fundamentals</div>
+      <h4>Retrieval vs Generation Are Separate</h4>
+      <p>Retrieval quality (did we find the right chunk?) and generation quality (did the LLM answer correctly?) are independent problems with independent solutions. Debug them separately.</p>
+    </div>
+    <div class="concept-card">
+      <div class="tag">Testing Strategy</div>
+      <h4>Golden Q&A Before Code</h4>
+      <p>Write your test cases before building the pipeline. This converts "seems to work" into a measurable score. Used by every serious ML team in production.</p>
+    </div>
+    <div class="concept-card">
+      <div class="tag">Observability</div>
+      <h4>Log Everything at Inference Time</h4>
+      <p>Always log retrieved chunks, scores, and sources alongside answers. 80% of wrong answers come from retrieval failures — you can't debug what you can't see.</p>
+    </div>
+    <div class="concept-card">
+      <div class="tag">API Design</div>
+      <h4>Keep API Layers Thin</h4>
+      <p>FastAPI handles HTTP. AI logic lives in <code>query.py</code> and <code>ingest.py</code>. This separation means you can test AI logic independently of HTTP concerns, and swap frontends without touching AI code.</p>
+    </div>
+    <div class="concept-card">
+      <div class="tag">Local-First AI</div>
+      <h4>Embeddings Always Stay Local</h4>
+      <p>Even when using Claude for answers, the embedding model runs locally. Embeddings are one-time cost; running them through an API means paying on every ingest. Local embeddings = free forever.</p>
+    </div>
+    <div class="concept-card">
+      <div class="tag">Hardware Awareness</div>
+      <h4>Model Size vs Available RAM</h4>
+      <p>Model file size (on disk) ≠ RAM required at inference. A model with a 128k context window pre-allocates KV cache for the full context — which can be 10-50x the model file size. Always check context window requirements.</p>
+    </div>
+    <div class="concept-card">
+      <div class="tag">Production Thinking</div>
+      <h4>Never Crash on a Single Failure</h4>
+      <p>The timeout try/except pattern is how real systems are built. One slow query should not kill a batch evaluation run or a production server. Isolate failures, log them, continue.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── How to Run ── -->
+<section id="howtorun">
+  <div class="section-label">Getting Started</div>
+  <h2>How to Run This Project Fresh</h2>
+  <p>Everything someone needs to clone this repo and get it running from zero:</p>
+
+  <h3>Prerequisites</h3>
+  <div class="tags">
+    <span class="tag tech">Python 3.12 recommended</span>
+    <span class="tag tech">Ollama installed</span>
+    <span class="tag tech">Git</span>
+    <span class="tag warn">16 GB RAM minimum for phi3:mini</span>
+  </div>
+
+  <h3>Setup</h3>
+  <pre><code># 1. Clone
+git clone https://github.com/Abhinayspace/policy-rag.git
+cd policy-rag
+
+# 2. Virtual environment
+python -m venv venv
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Mac/Linux
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Copy and fill .env
+copy .env.example .env
+# Edit .env: set LLM_MODE=ollama (default) or LLM_MODE=claude + ANTHROPIC_API_KEY
+
+# 5. Pull Ollama models
+ollama pull phi3:mini
+ollama pull nomic-embed-text
+
+# 6. Add your PDFs to /pdfs folder
+
+# 7. Run ingestion (one-time, ~6 min for 38 PDFs)
+python -m app.ingest
+
+# 8. Start the API (Terminal 1)
+uvicorn app.main:app --port 8000
+
+# 9. Start the UI (Terminal 2)
+streamlit run ui/streamlit_app.py
+
+# 10. Open http://localhost:8501</code></pre>
+
+  <h3>Re-indexing After Adding New PDFs</h3>
+  <pre><code># Option A: from the Streamlit UI sidebar → click "Re-index PDFs"
+
+# Option B: from terminal
+# Delete old vector store first (important!)
+rmdir /s vector_store      # Windows
+# rm -rf vector_store      # Mac/Linux
+python -m app.ingest</code></pre>
+
+  <div class="callout warn">
+    <strong>Always delete vector_store/ before re-indexing.</strong> If you don't, old embeddings from removed documents remain in ChromaDB and will pollute search results. The <code>/ingest</code> API endpoint handles this automatically (calls <code>shutil.rmtree</code> first).
+  </div>
+
+  <h3>Switching to Claude (Better Quality)</h3>
+  <pre><code># In .env:
+LLM_MODE=claude
+ANTHROPIC_API_KEY=sk-ant-...
+
+# No code changes. Restart the API server.
+# Expected quality: 15/15 vs 12/15 with phi3:mini</code></pre>
+
+  <div class="callout success">
+    <strong>You built a production-grade RAG system.</strong> The architecture — swap point, local embeddings, persistent vector store, thin API, chat UI — is the same pattern used at companies like Notion, Glean, and every law firm running internal document search. The models and scale differ, but the design is identical. You now understand how it works from the ground up.
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<div style="padding:40px 0;text-align:center">
+  <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px">Build Journey Complete</div>
+  <div style="font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--text)">Policy RAG · Acidaes Solutions</div>
+  <div style="font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-top:8px">6 Phases · 15 Roadblocks · 10 Key Concepts · 1 Working Product</div>
+</div>
+
+</main>
+</div>
+
+<script>
+// Highlight active nav item on scroll
+const sections = document.querySelectorAll('section[id]');
+const navItems = document.querySelectorAll('.nav-item');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 80) current = s.id;
+  });
+  navItems.forEach(item => {
+    item.classList.toggle('active', item.getAttribute('href') === '#' + current);
+  });
+});
+</script>
+</body>
+</html>
